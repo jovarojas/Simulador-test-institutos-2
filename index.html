@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="simulador unach preuniversitario San Marcos Riobamba">
+    <meta name="keywords" content="simulador, unach, ingreso, universidad, practic">
+    <meta name="author" content="Jovanna Rojas Malave">
+    <title>SIMULADOR INSTITUTOS Nº2</title>
+    <link rel="icon" href="favicon.ico">
+    <!--
+    Autor: Jovanna Rojas Malave
+    GitHub: https://github.com/jovarojas
+    LinkedIn: www.linkedin.com/in/jovannarojasm -->
+    <script>
+        window.addEventListener("DOMContentLoaded", function () {
+            let preguntaActual = parseInt(localStorage.getItem("preguntaActual")) || 0; // Cargar pregunta guardada o iniciar en 0
+            let preguntas = document.querySelectorAll(".pregunta");
+            let tiempoRestante = parseInt(localStorage.getItem("tiempoRestante")) || 2700; // Cargar tiempo o iniciar en 1 hora;
+            let timer;
+            let respuestasCorrectas = {
+                q1: "a", q2: "a", q3: "a", q4: "a", q5: "b", q6: "b", q7: "c", q8: "c", q9: "d", q10: "d", q11: "d", q12: "b",
+                q13: "b", q14: "d", q15: "b", q16: "c", q17: "b", q18: "a", q19: "a", q20: "d", q21: "b", q22: "a", q23: "c",
+                q24: "d", q25: "c", q26: "b", q27: "c", q28: "a", q29: "a", q30: "d", q31: "d", q32: "b", q33: "b", q34: "a",
+                q35: "c", q36: "d", q37: "c", q38: "c", q39: "b", q40: "a"
+            };
+
+            let respuestasUsuario = JSON.parse(localStorage.getItem("respuestasUsuario")) || {};
+
+            function iniciarTemporizador() {
+                if (timer) {
+                    clearInterval(timer); // Detener cualquier temporizador anterior
+                }
+
+                timer = setInterval(function () {
+                    tiempoRestante--;
+                    localStorage.setItem("tiempoRestante", tiempoRestante); // Guardar tiempo restante
+
+                    let minutos = Math.floor(tiempoRestante / 60);
+                    let segundos = tiempoRestante % 60;
+                    document.getElementById("timer").innerText = "Tiempo restante: " + minutos + ":" + (segundos < 10 ? '0' : '') + segundos;
+
+                    if (tiempoRestante <= 0) {
+                        clearInterval(timer);
+                        mostrarResultados();
+                    }
+                }, 1000);
+            }
+
+
+            function actualizarContador() {
+                document.getElementById("contador").innerText = "Pregunta " + (preguntaActual + 1) + " de " + preguntas.length;
+                localStorage.setItem("preguntaActual", preguntaActual); // Guardar progreso
+            }
+
+            function siguientePregunta() {
+                let nombrePregunta = "q" + (preguntaActual + 1);
+                let seleccionada = document.querySelector("input[name=" + nombrePregunta + "]:checked");
+
+                if (seleccionada) {
+                    respuestasUsuario[nombrePregunta] = seleccionada.value;
+                }
+
+                localStorage.setItem("respuestasUsuario", JSON.stringify(respuestasUsuario));
+
+                //la clase active se va moviendo en cada pregunta por lo cual hay que retirarla de la "anterior"
+                preguntas[preguntaActual].classList.remove("active");
+                preguntaActual++; //Se incrementa para marcar la posicion de la pregunta
+
+                if (preguntaActual < preguntas.length) {
+                    preguntas[preguntaActual].classList.add("active"); //se le agrega la clase active a la nueva pregunta actual
+                    document.getElementById("prevButton").disabled = false;
+                    actualizarContador();
+                } else {
+                    mostrarResultados();
+                }
+
+                if (preguntaActual === preguntas.length - 1) {
+                    document.getElementById("nextButton").innerText = "Finalizar";
+                }
+            }
+            /*Ir a la pregunta anterior y guardar el proceso*/
+            function preguntaAnterior() {
+                preguntas[preguntaActual].classList.remove("active");
+                preguntaActual--;
+
+                if (preguntaActual >= 0) {
+                    preguntas[preguntaActual].classList.add("active");
+                    actualizarContador();
+                }
+
+                if (preguntaActual === 0) {
+                    document.getElementById("prevButton").disabled = true;
+                }
+
+                document.getElementById("nextButton").innerText = "Siguiente";
+            }
+
+            function mostrarResultados() {
+                clearInterval(timer);
+                localStorage.removeItem("tiempoRestante"); // Limpiar tiempo restante al finalizar
+
+                let aciertos = 0;
+                let puntajeFinal = 400;
+
+                let detalleResultados = document.getElementById("detalleResultados");
+                detalleResultados.innerHTML = "<h3>Resultados detallados:</h3>";
+
+                for (let i = 0; i < preguntas.length; i++) {
+                    let pregunta = preguntas[i];
+                    let nombrePregunta = "q" + (i + 1);
+                    let respuestaUsuario = respuestasUsuario[nombrePregunta] || "No respondida";
+                    let correcta = respuestasCorrectas[nombrePregunta];
+
+                    let resultadoTexto = "<p><strong>Pregunta " + (i + 1) + ":</strong> ";
+
+                    if (respuestaUsuario === "No respondida") {
+                        resultadoTexto += "⚠️ No respondida</p>";
+                    } else if (respuestaUsuario === correcta) {
+                        aciertos++;
+                        resultadoTexto += "✅ Correcta (" + respuestaUsuario.toUpperCase() + ")</p>";
+                    } else {
+                        resultadoTexto += "❌ Incorrecta (Tu respuesta: " + respuestaUsuario.toUpperCase() + " | Correcta: " + correcta.toUpperCase() + ")</p>";
+                    }
+
+                    detalleResultados.innerHTML += resultadoTexto;
+                }
+
+                puntajeFinal += (aciertos * 15); // Ajuste según escala
+
+                document.getElementById("resultado").innerText = "Examen finalizado. Aciertos: " + aciertos + " de " + preguntas.length;
+                document.getElementById("puntaje").innerHTML = "Puntaje final: " + puntajeFinal.toFixed(2) + "/1000";
+
+                // Ocultar elementos innecesarios después del examen
+                document.getElementById("nextButton").style.display = "none";
+                document.getElementById("prevButton").style.display = "none";
+                document.getElementById("timer").style.display = "none";
+                document.getElementById("contador").style.display = "none";
+
+                // Ocultar todas las preguntas al finalizar
+                for (let i = 0; i < preguntas.length; i++) {
+                    preguntas[i].style.display = "none";
+                }
+            }
+
+            // Cargar respuestas guardadas y restaurar la pregunta actual
+            function cargarRespuestasGuardadas() {
+                let nombresPreguntas = Object.keys(respuestasUsuario);
+
+                for (let i = 0; i < nombresPreguntas.length; i++) {
+                    let nombrePregunta = nombresPreguntas[i];
+                    let opcionSeleccionada = document.querySelector('input[name="' + nombrePregunta + '"][value="' + respuestasUsuario[nombrePregunta] + '"]');
+                    if (opcionSeleccionada) {
+                        opcionSeleccionada.checked = true;
+                    }
+                }
+
+                // Restaurar la última pregunta activa
+                for (let i = 0; i < preguntas.length; i++) {
+                    preguntas[i].classList.remove("active");
+                }
+
+                preguntas[preguntaActual].classList.add("active"); // Mostrar la última pregunta vista
+                actualizarContador();
+            }
+
+            const p = "123";
+
+            function pedirContraseña() {
+                document.getElementById("contenidoTest").style.display = "none";
+            }
+
+            function verificarContraseña() {
+                let inputP = document.getElementById("pInput").value;
+
+                if (inputP === p) {
+                    document.getElementById("login").style.display = "none";
+                    document.getElementById("contenidoTest").style.display = "block";
+                    cargarRespuestasGuardadas();
+                    iniciarTemporizador();
+                } else {
+                    alert("Contraseña incorrecta, intenta de nuevo.");
+                    document.getElementById("pInput").value = "";
+                }
+            }
+
+            function reiniciarTest() {
+                localStorage.clear();
+                location.reload();
+            }
+
+            // Vincular funciones a botones si están presentes
+            document.getElementById("nextButton")?.addEventListener("click", siguientePregunta);
+            document.getElementById("prevButton")?.addEventListener("click", preguntaAnterior);
+            document.getElementById("verificarBtn")?.addEventListener("click", verificarContraseña);
+            document.getElementById("reiniciarBtn")?.addEventListener("click", reiniciarTest);
+
+            // Mostrar pantalla de contraseña si aplica
+            pedirContraseña();
+        })
+    </script>
+    <style>
+        * {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        body {
+            margin: 20px;
+            font-size: 150%;
+        }
+
+        footer,
+        h2 {
+            text-align: center;
+        }
+
+        h2 {
+            line-height: 100px;
+            background-color: #00345d;
+            color: white;
+        }
+
+        #login {
+            position: relative;
+        }
+
+        [alt*="fija"] {
+            border-radius: 50%;
+            position: fixed;
+            bottom: 5px;
+            right: 5px;
+            max-height: 100px;
+            width: auto;
+        }
+
+        footer {
+            background-color: lightgray;
+            border: #00345d groove 2px;
+            padding: 10px;
+            font-weight: bold;
+        }
+
+        header img {
+            float: left;
+        }
+
+        #quiz {
+            clear: both;
+            overflow: hidden;
+        }
+
+        .cuadrado {
+            width: 150px;
+            height: 150px;
+        }
+
+        .rectangulo {
+            height: 150px;
+            width: 400px;
+        }
+
+        .pregunta {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            float: right;
+            width: 80%;
+            padding: 10px;
+        }
+
+        input {
+            margin: 10px 5px;
+            transform: scale(1.3);
+        }
+
+        p+img {
+            margin-left: 5px;
+            max-width: 90%;
+        }
+
+        .active {
+            display: block;
+            opacity: 1;
+            background-color: #b3c7dbAA;
+        }
+
+        button {
+            padding: 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 20px;
+            border-radius: 10px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        #timer {
+            font-weight: bold;
+            color: red;
+            margin-bottom: 10px;
+            display: block;
+            float: right;
+            border: 2px solid black;
+            padding: 10px;
+        }
+
+        #contador {
+            font-size: 20px;
+            margin-bottom: 10px;
+            display: block;
+            float: left;
+            border: 2px solid black;
+            padding: 10px;
+            background-color: lightgray;
+        }
+
+        p>span {
+            font-size: 300%;
+            margin: 10px;
+        }
+
+
+        #prevButton {
+            float: left;
+            clear: both;
+        }
+
+        #nextButton {
+            float: right;
+
+        }
+
+        #reiniciar {
+            float: left;
+            margin-top: 24px;
+        }
+
+        #pInput {
+            margin-right: 30px;
+
+        }
+
+        table img {
+            max-width: 700px;
+        }
+
+        table,
+        tr,
+        td,
+        th {
+            border: solid 2px black;
+            border-collapse: collapse;
+            text-align: center;
+            padding: 10px;
+        }
+
+
+        /* Adaptación para pantallas moviles */
+        @media screen and (max-width: 768px) {
+            body {
+                font-size: 120%;
+                margin: 10px;
+            }
+
+            h2 {
+                font-size: 20px;
+                line-height: normal;
+                padding: 10px;
+            }
+
+            header img {
+                float: none;
+                display: block;
+                margin: 0 auto;
+            }
+
+            #quiz {
+                width: 100%;
+            }
+
+            .pregunta {
+                width: 95%;
+                float: none;
+            }
+
+            div>img {
+                width: 85%;
+            }
+
+            #timer,
+            #contador {
+                font-size: 16px;
+                float: none;
+                display: block;
+                text-align: center;
+                width: 93%;
+            }
+
+            button {
+                width: 100%;
+                font-size: 18px;
+            }
+
+            #prevButton,
+            #nextButton {
+                float: none;
+                display: block;
+                width: 98%;
+                text-align: center;
+            }
+
+            #reiniciar {
+                float: none;
+                display: block;
+                margin: 10px auto;
+                text-align: center;
+            }
+
+            .pregunta p {
+                margin: 16px;
+            }
+
+
+            table {
+                margin-right: 16px;
+            }
+
+            .secuencia {
+                width: 90%;
+                height: 90px;
+            }
+
+            .rectangulo {
+                width: 90%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="login" style="text-align:center; padding: 20px;">
+        <h2>Ingrese la contraseña para acceder al test</h2>
+        <input type="password" id="pInput" autofocus>
+        <button id="verificarBtn">Ingresar</button>
+        <img src="images/logo.png" alt="imagen fija">
+    </div>
+
+    <div id="contenidoTest" style="display: none;">
+        <header>
+            <img src="images/logo.png" alt="logo del preuniversitario">
+            <h2>SIMULADOR INSTITUTOS Nº2<br>PREUNIVERSITARIO SAN MARCOS</h2>
+            <button id="reiniciarBtn">Reiniciar Test</button>
+            <p id="timer">Tiempo restante: 45:00</p>
+        </header>
+
+        <div id="quiz">
+            <p id="contador">Pregunta 1 de 40</p>
+            <!--PREGUNTA 1 A LA 20-->
+            <div class="pregunta active">
+                <p><b>Reconoce los elementos en una metáfora.</b></p>
+                <p>"La mente es un laberinto de ideas infinitas."</p>
+                <input type="radio" name="q1" value="a">La mente es el elemento real y un laberinto de ideas infinitas
+                es el elemento imaginario.<br>
+                <input type="radio" name="q1" value="b">Un laberinto de ideas infinitas es el elemento real y la mente
+                es el elemento imaginario.<br>
+                <input type="radio" name="q1" value="c">La mente es el elemento figurado y las ideas representan
+                obstáculos reales.<br>
+                <input type="radio" name="q1" value="d">La mente y el laberinto son elementos imaginarios.<br>
+            </div>
+            <div class="pregunta">
+                <p><b>Completa la oración con el par de palabras que correspondan.</b></p>
+                <p>Durante unos meses realmente no supe qué hacer. Tenía la sensación de haber _____ a la generación
+                    anterior de empresarios, de haber dejado caer la _____ cuando me lo estaban pasando.</p>
+                <input type="radio" name="q2" value="a">decepcionado - posta<br>
+                <input type="radio" name="q2" value="b">juzgado – sentencia<br>
+                <input type="radio" name="q2" value="c">ganado - pelota<br>
+                <input type="radio" name="q2" value="d">perseguido - oportunidad<br>
+            </div>
+
+            <div class="pregunta">
+                <p>Elija el enunciado que emplee correctamente las normas ortográficas.</p>
+                <input type="radio" name="q3" value="a">El nuevo parque de la ciudad tiene columpios y áreas verdes.<br>
+                <input type="radio" name="q3" value="b">El museo canseló la exhibición de obras de arte.<br>
+                <input type="radio" name="q3" value="c">Aprendí a cosinar pasta italiana el fin de semana pasado.<br>
+                <input type="radio" name="q3" value="d">La película de ciensia ficsión que vi ayer tenía efectos
+                especiales increíbles.<br>
+            </div>
+
+            <div class="pregunta">
+                <img src="images/1a.png" alt="figuras con patrones"><br>
+                <input type="radio" name="q4" value="a"><img src="images/1b.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q4" value="b"><img src="images/1c.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q4" value="c"><img src="images/1d.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q4" value="d"><img src="images/1e.png" alt="patron faltante"
+                    class="cuadrado"><br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Identifique la imagen que corresponde al conjunto</b></p>
+                <img src="images/1f.png" alt="figuras con patrones"><br>
+                <input type="radio" name="q5" value="a"><img src="images/1g.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q5" value="b"><img src="images/1h.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q5" value="c"><img src="images/1i.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q5" value="d"><img src="images/1j.png" alt="patron faltante"
+                    class="cuadrado"><br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Escoja una vista de la figura mostrada</b></p>
+                <img src="images/1k.png" alt="vista de figura"><br>
+                <input type="radio" name="q6" value="a"><img src="images/1l.png" alt="Vista de la figura"
+                    class="cuadrado"><br>
+                <input type="radio" name="q6" value="b"><img src="images/1m.png" alt="Vista de la figura"
+                    class="cuadrado"><br>
+                <input type="radio" name="q6" value="c"><img src="images/1n.png" alt="Vista de la figura"
+                    class="cuadrado"><br>
+                <input type="radio" name="q6" value="d"><img src="images/1o.png" alt="Vista de la figura"
+                    class="cuadrado"><br>
+            </div>
+            <div class="pregunta">
+                <p><b>Encuentra los dos términos siguientes, de la sucesión</b></p>
+                <p>-17, -13, -9, -5, __, __. </p>
+                <input type="radio" name="q7" value="a">8, -8<br>
+                <input type="radio" name="q7" value="b">-5, -1 <br>
+                <input type="radio" name="q7" value="c">-1, 3<br>
+                <input type="radio" name="q7" value="d">-9, -3<br>
+            </div>
+            <div class="pregunta">
+                <p><b>Indique la figura que continúa la secuencia</b></p>
+                <img src="images/1p.png" alt="secuencia"><br>
+                <input type="radio" name="q8" value="a"><img src="images/1q.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q8" value="b"><img src="images/1r.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q8" value="c"><img src="images/1s.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q8" value="d"><img src="images/1t.png" alt="patron faltante"
+                    class="cuadrado"><br>
+            </div>
+            <div class="pregunta">
+                <p><b>Calcula la solución al siguiente planteamiento</b></p>
+                <p>Una empresa alimenticia obtiene una ganancia neta de $ 10 000. Si el gerente de la empresa se queda
+                    con el 40%, el departamento de publicidad con un 20% y las 5 personas de planta se dividen en partes
+                    iguales el restante porcentaje. ¿Cuánto le toca a cada persona de planta?</p>
+                <input type="radio" name="q9" value="a">4000<br>
+                <input type="radio" name="q9" value="b">250<br>
+                <input type="radio" name="q9" value="c">1 250<br>
+                <input type="radio" name="q9" value="d">800<br>
+            </div>
+            <div class="pregunta">
+                <p><b>Cuál es el orden correcto si se gira sucesivamente 45 º, en el sentido horario?</b></p>
+                <img src="images/1u.png" alt="giros"><br>
+                <input type="radio" name="q10" value="a">1, 2, 3, 4<br>
+                <input type="radio" name="q10" value="b">1, 4, 3, 2<br>
+                <input type="radio" name="q10" value="c">1, 2, 4, 3<br>
+                <input type="radio" name="q10" value="d">1, 4, 2, 3<br>
+            </div>
+            <div class="pregunta">
+                <p><b>Calcula la solución al siguiente planteamiento</b></p>
+                <p>Un automóvil debe recorrer entre 300km y 480km con un tanque lleno. Si el consumo por kilómetro es
+                    constante e igual a 12km por litro. ¿Cuántos litros debe tener el tanque como mínimo y máximo?</p>
+                <input type="radio" name="q11" value="a">-15≥x<br>
+                <input type="radio" name="q11" value="b">3 600 ≤x≤5 760<br>
+                <input type="radio" name="q11" value="c">x≥65<br>
+                <input type="radio" name="q11" value="d">25≤x≤40<br>
+            </div>
+            <!--VERBAL-->
+            <div class="pregunta">
+                <p><b>Identifique la figura que termina la secuencia</b></p>
+                <img src="images/1v.png" alt="secuencias"><br>
+                <input type="radio" name="q12" value="a"><img src="images/1w.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q12" value="b"><img src="images/1x.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q12" value="c"><img src="images/1y.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q12" value="d"><img src="images/1z.png" alt="patron faltante"
+                    class="cuadrado"><br>
+            </div>
+            <div class="pregunta">
+                <p><b>Calcula la solución al siguiente planteamiento</b></p>
+                <p>María fue al Banco del Pacífico y la cajera le informa que hace tres meses tenía en su cuenta la
+                    cantidad de su dinero actual elevada al cubo, multiplicado por dieciséis, y que si hoy retira el
+                    dinero que tiene en la cuenta, la misma quedará en cero. ¿Cuánto dinero, en dólares, tiene ahora
+                    María?</p>
+                <input type="radio" name="q13" value="a">0.02<br>
+                <input type="radio" name="q13" value="b">0.25<br>
+                <input type="radio" name="q13" value="c">0.06<br>
+                <input type="radio" name="q13" value="d">1.00<br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Calcula la solución al siguiente planteamiento.</b></p>
+                <p>¿Cuántos números de dos cifras distintas se pueden formar utilizando los dígitos 2,3,4 y 9, si no se
+                    permite repetir ningún dígito?</p>
+                <input type="radio" name="q14" value="a">4<br>
+                <input type="radio" name="q14" value="b">8<br>
+                <input type="radio" name="q14" value="c">24<br>
+                <input type="radio" name="q14" value="d">12<br>
+            </div>
+            <div class="pregunta">
+                <p><b>Calcula la solución al siguiente planteamiento.</b></p>
+                <p>Nueve obreros tardan 21 días en levantar un muro de ladrillos. ¿Cuántos días necesitaran 6 obreros
+                    para levantar un muro semejante?</p>
+                <input type="radio" name="q15" value="a">2.50<br>
+                <input type="radio" name="q15" value="b">31.5<br>
+                <input type="radio" name="q15" value="c">5.00<br>
+                <input type="radio" name="q15" value="d">14.00<br>
+            </div>
+            <div class="pregunta">
+                <p><b>Calcula la solución al siguiente planteamiento.</b></p>
+                <p>Dos números suman 66. Si al número mayor se le restan 6 unidades, el resultado es el triple del
+                    menor. ¿Cuál es el número mayor?</p>
+                <input type="radio" name="q16" value="a">46<br>
+                <input type="radio" name="q16" value="b">48<br>
+                <input type="radio" name="q16" value="c">51<br>
+                <input type="radio" name="q16" value="d">15<br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Seleccione la opción que se ubica en el espacio indicado.</b></p>
+                <img src="images/2a.png" alt="secuencias"><br>
+
+                <input type="radio" name="q17" value="a"><img src="images/2b.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q17" value="b"><img src="images/2c.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q17" value="c"><img src="images/2d.png" alt="patron faltante"
+                    class="cuadrado"><br>
+                <input type="radio" name="q17" value="d"><img src="images/2e.png" alt="patron faltante"
+                    class="cuadrado"><br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Todas las imágenes corresponden a vistas del cuerpo, excepto:</b></p>
+                <img src="images/2f.png" alt="vista figura"><br>
+                <input type="radio" name="q18" value="a"><img src="images/2g.png" alt="vista figura"
+                    class="cuadrado"><br>
+                <input type="radio" name="q18" value="b"><img src="images/2h.png" alt="vista figura"
+                    class="cuadrado"><br>
+                <input type="radio" name="q18" value="c"><img src="images/2i.png" alt="vista figura"
+                    class="cuadrado"><br>
+                <input type="radio" name="q18" value="d"><img src="images/2j.png" alt="vista figura"
+                    class="cuadrado"><br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Calcula la solución al siguiente planteamiento.</b></p>
+                <p>María tiene, en su closet varias prendas de acuerdo con el siguiente listado: </p>
+                <p>
+                    5 blusas Rojas<br>7 blusas Azules<br>3 pantalones Negros<br>8 pantalones Plomos<br>3 faldas
+                    Rosadas<br>2 chaquetas Negras
+                </p>
+                <p>Si se escoge una prenda al azar. ¿Cuál es la probabilidad de que María elija la falda de color
+                    rosado?</p>
+                <input type="radio" name="q19" value="a">3/28<br>
+                <input type="radio" name="q19" value="b">7/28<br>
+                <input type="radio" name="q19" value="c">5/28<br>
+                <input type="radio" name="q19" value="d">2/14<br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Calcula la solución al siguiente planteamiento.</b></p>
+                <p>En una fábrica, una máquina empaqueta 15 cajas en la primera hora, 20 en la segunda, 25 en la
+                    tercera, y así sucesivamente. ¿Cuántas cajas empaquetaría en la sexta hora?</p>
+                <input type="radio" name="q20" value="a">50<br>
+                <input type="radio" name="q20" value="b">35<br>
+                <input type="radio" name="q20" value="c">45<br>
+                <input type="radio" name="q20" value="d">40<br>
+            </div>
+            <!--PREGUNTA 21 a la 40-->
+            <div class="pregunta">
+                <p><b>Calcula la solución al siguiente planteamiento.</b></p>
+                <p>Los ingresos de la sucursal de una empresa ubicada en Quito son dirigidos, en su totalidad para pagar
+                    toda la operación/gastos de la empresa</p>
+                <img src="images/2k.png" alt="grafica"><br>
+                <p>Determine el dominio de la función que muestra los ingresos de la empresa, para tener un control
+                    presupuestario.</p>
+                <input type="radio" name="q21" value="a">]-∞;1]<br>
+                <input type="radio" name="q21" value="b">]1;+∞[<br>
+                <input type="radio" name="q21" value="c">]-∞;1]<br>
+                <input type="radio" name="q21" value="d">[0;+∞[<br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Identifica el tipo de texto literario.</b></p>
+                <p>La rutina diaria de Don Ramón era constante. Se despertaba a las 6:00 de la mañana y se entregaba a
+                    un desayuno. Después de satisfacer su apetito, se sumergía en la lectura en su biblioteca. Al
+                    mediodía, tomaba una "merecida" siesta. Posteriormente, se levantaba para prepararse y salir por la
+                    tarde. Caminaba por las calles hasta llegar al establecimiento de vino de Mariana, apodada la Chola.
+                    En una ocasión, después de unas copas, Don Ramón desafió a un gallo de pelea que encontró.<br>El
+                    gallo aceptó el desafío y le picoteó en la cabeza. Asustado, Don Ramón pidió perdón al gallo, quien
+                    le advirtió: – No vuelvas a beber, ya que, si lo haces de nuevo, no tendré clemencia.<br>Don Ramón
+                    mantuvo su promesa y pasó muchos años sin probar el licor. Sin embargo, durante una reunión con
+                    amigos, sucumbió al deseo de beber nuevamente. Después de ese episodio, desapareció del pueblo
+                    hacendado, dejando en suspenso su destino.</p>
+                <input type="radio" name="q22" value="a">leyenda<br>
+                <input type="radio" name="q22" value="b">novela<br>
+                <input type="radio" name="q22" value="c">mito<br>
+                <input type="radio" name="q22" value="d">cuento<br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Seleccione la imagen que no pertenece al conjunto.</b></p>
+                <img src="images/2l.png" alt="giros"><br>
+                <input type="radio" name="q23" value="a"><img src="images/2m.png" alt="giro figura"><br>
+                <input type="radio" name="q23" value="b"><img src="images/2n.png" alt="giro figura"><br>
+                <input type="radio" name="q23" value="c"><img src="images/2o.png" alt="giro figura"><br>
+                <input type="radio" name="q23" value="d"><img src="images/2p.png" alt="giro figura"><br>
+            </div>
+            <div class="pregunta">
+                <p><b> Indique del fragmento, la clase de texto no literario.</b></p>
+                <p>Si descubrimos una teoría completa, debería ser comprensible para todos, no solo para los
+                    científicos. Entonces todos podremos participar en la discusión de por qué existimos y por qué el
+                    universo existe.</p>
+                <input type="radio" name="q24" value="a">descriptivo<br>
+                <input type="radio" name="q24" value="b">informativo<br>
+                <input type="radio" name="q24" value="c">narrativo<br>
+                <input type="radio" name="q24" value="d">científico<br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Complete la oración, con el par de palabras homónimas.</b></p>
+                <p>Por un fuerte dolor del ___ abdominal y una leve deshidratación, el doctor me recomendó tomar la
+                    medicina con un ___ con agua. </p>
+                <input type="radio" name="q25" value="a">vaso - vazo<br>
+                <input type="radio" name="q25" value="b">vaso - vaso<br>
+                <input type="radio" name="q25" value="c">bazo - vaso<br>
+                <input type="radio" name="q25" value="d">bazo – bazo<br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Identifica la idea principal del texto.</b></p>
+                <p>Una mañana, mientras me encontraba desayunando, escuché un ruido extraño que provenía de mi cuarto.
+                    Me levanté y fui a asomarme. Ahí, justo al otro lado de la puerta, estaba yo. ¿Cómo podría ser eso
+                    posible? Sólo me quedé viéndome y asustada salí inmediatamente hacia la habitación de mis padres.
+                    Les conté lo sucedido, pero ellos no me creyeron. Me fui al colegio como de costumbre, todo parecía
+                    estar bien hasta que... ¡Me topé con ella! Nuevamente se me quedó viendo, yo cerré y abrí mis ojos,
+                    pero ella aún seguía ahí. Entonces, me armé de valor y le pregunté, ¿quién eres?, ¿y por qué me
+                    sigues? Ella me contestó con delicadeza: “Soy tu gemela, sé cómo te sientes, nuestra abuela que
+                    ahora está en el cielo, de donde yo vengo, me mandó; mi deber es acompañarte por determinado
+                    tiempo”.</p>
+                <input type="radio" name="q26" value="a">La joven se alistaba para ir al colegio.<br>
+                <input type="radio" name="q26" value="b">Encuentro fugaz entre una joven y su hermana gemela
+                fallecida.<br>
+                <input type="radio" name="q26" value="c">¡Me topé con ella!<br>
+                <input type="radio" name="q26" value="d">Los padres de la joven no creen su historia.<br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Identifique el slogan con nivel de lenguaje adecuado, al destinatario que se dirige.</b></p>
+                <p>La empresa realiza productos que combinan diseño actual y vanguardista con una alta calidad en su
+                    fabricación.</p>
+                <input type="radio" name="q27" value="a">Expresa tu estilo<br>
+                <input type="radio" name="q27" value="b">Encuentra la mejor calidad solo en nuestros productos<br>
+                <input type="radio" name="q27" value="c">Estilos modernos, calidad excepcional.<br>
+                <input type="radio" name="q27" value="d">Servicios innovadores, calidad insuperable.<br>
+            </div>
+            <div class="pregunta">
+                <p><b>Completa la oración con la palabra correcta.</b></p>
+                <p>La exposición de Goya en el Palacio de Cristal fue un éxito, ____ que no llegaron a tiempo todas las
+                    obras.</p>
+
+                <input type="radio" name="q28" value="a">A pesar de<br>
+                <input type="radio" name="q28" value="b">Gracias a<br>
+                <input type="radio" name="q28" value="c">Sin embargo<br>
+                <input type="radio" name="q28" value="d">Aunque<br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Elija la respuesta correcta</b></p>
+                <p>¿Cuál es la causa principal del aumento de incendios forestales en un área protegida?</p>
+                <input type="radio" name="q29" value="a">Las altas temperaturas y la sequía prolongada.<br>
+                <input type="radio" name="q29" value="b">Las lluvias durante las tormentas eléctricas<br>
+                <input type="radio" name="q29" value="c">La acumulación de basura dejada por turistas.<br>
+                <input type="radio" name="q29" value="d">La falta de bomberos en la zona.<br>
+            </div>
+            <!--30-->
+            <div class="pregunta">
+                <p><b>Complete la analogía con la palabra que corresponda.</b></p>
+                <p>Verde es a color como ____ son a música. </p>
+                <input type="radio" name="q30" value="a">pinceles<br>
+                <input type="radio" name="q30" value="b">teclados<br>
+                <input type="radio" name="q30" value="c">brochas<br>
+                <input type="radio" name="q30" value="d">notas<br>
+            </div>
+            <div class="pregunta">
+                <p><b>Identifica la idea implícita del texto literario.</b></p>
+                <p>En el Lieh Tzu, se cuenta que un hombre, que había perdido su hacha, sospechaba que se la había
+                    robado el hijo de su vecino. Su modo de andar, su talante y su manera de hablar lo señalaban como el
+                    ladrón. Sus acciones, cada uno de sus movimientos y, de hecho, su conducta en general indicaba con
+                    claridad que él y no otro había robado el hacha. Con el tiempo, sin embargo, mientras cavaba en su
+                    jardín, el dueño se encontró con el implemento perdido. Al día siguiente, cuando volvió a ver al
+                    hijo de su vecino, no halló ningún rastro de culpa en sus movimientos, ni en sus acciones, ni en su
+                    conducta en general.</p>
+                <input type="radio" name="q31" value="a">¿Cómo el ser humano es capaz de determinarse frente a ideas
+                erróneas?<br>
+                <input type="radio" name="q31" value="b">Un hombre perdió el hacha.<br>
+                <input type="radio" name="q31" value="c">El hombre mientras cavaba en el jardín encontró el hacha<br>
+                <input type="radio" name="q31" value="d">Muchas veces juzgamos a las personas por sus apariencias.<br>
+            </div>
+
+            <div class="pregunta">
+                <p><b>Identifica la consecuencia lógica a partir de premisas.</b></p>
+                <p>1. Las plantas no viven sin luz solar.<br>2. En el sótano la planta no recibe luz solar.</p>
+                <input type="radio" name="q32" value="a">La planta está saludable<br>
+                <input type="radio" name="q32" value="b">La planta se marchitará<br>
+                <input type="radio" name="q32" value="c">La planta no recibe luz solar<br>
+                <input type="radio" name="q32" value="d">Algunas plantas sobreviven sin luz<br>
+            </div>
+            <div class="pregunta">
+                <img src="images/2q.png" alt="patrones"><br>
+                <input type="radio" name="q33" value="a"><img src="images/2r.png" alt="patrones" class="cuadrado"><br>
+                <input type="radio" name="q33" value="b"><img src="images/2s.png" alt="patrones" class="cuadrado"><br>
+                <input type="radio" name="q33" value="c"><img src="images/2t.png" alt="patrones" class="cuadrado"><br>
+                <input type="radio" name="q33" value="d"><img src="images/2u.png" alt="patrones" class="cuadrado"><br>
+            </div>
+            <div class="pregunta">
+                <p><b>Calcula la solución al siguiente planteamiento.</b></p>
+                <p>Sebastián fue al Banco del Pichincha y la cajera le informa que hace un mes él tenía en su cuenta una
+                    cantidad de dinero, que al elevar al cuadrado y multiplicado por cinco, es equivalente al dinero que
+                    tiene actualmente. ¿Cuánto dinero, en dólares, tiene actualmente Sebastián?</p>
+                <input type="radio" name="q34" value="a">0.20<br>
+                <input type="radio" name="q34" value="b">-0.20<br>
+                <input type="radio" name="q34" value="c">0.04<br>
+                <input type="radio" name="q34" value="d">1.00<br>
+            </div>
+            <div class="pregunta">
+                <p><b>Indica la figura que continúa la secuencia</b></p>
+                <img src="images/2v.png" alt="secuencia" class="secuencia"><br>
+                <input type="radio" name="q35" value="a"><img src="images/2w.png" alt="patrones" class="cuadrado"><br>
+                <input type="radio" name="q35" value="b"><img src="images/2x.png" alt="patrones" class="cuadrado"><br>
+                <input type="radio" name="q35" value="c"><img src="images/2y.png" alt="patrones" class="cuadrado"><br>
+                <input type="radio" name="q35" value="d"><img src="images/2z.png" alt="patrones" class="cuadrado"><br>
+            </div>
+            <div class="pregunta">
+                <p><b>Todas las imágenes corresponden a vistas del cuerpo, excepto:</b></p>
+                <img src="images/3a.png" alt="vista de figura"><br>
+                <input type="radio" name="q36" value="a"><img src="images/3b.png" alt="vista de figura"
+                    class="cuadrado"><br>
+                <input type="radio" name="q36" value="b"><img src="images/3c.png" alt="vista de figura"
+                    class="cuadrado"><br>
+                <input type="radio" name="q36" value="c"><img src="images/3d.png" alt="vista de figura"
+                    class="cuadrado"><br>
+                <input type="radio" name="q36" value="d"><img src="images/3e.png" alt="vista de figura"
+                    class="cuadrado"><br>
+            </div>
+            <div class="pregunta">
+                <p><b>Identifique la opción que continua la secuencia.</b></p>
+                <img src="images/3f.png" alt="secuencia de figuras" class="secuencia"><br>
+                <input type="radio" name="q37" value="a"><img src="images/3g.png" alt="patrones" class="cuadrado"><br>
+                <input type="radio" name="q37" value="b"><img src="images/3h.png" alt="patrones" class="cuadrado"><br>
+                <input type="radio" name="q37" value="c"><img src="images/3i.png" alt="patrones" class="cuadrado"><br>
+            </div>
+            <div class="pregunta">
+                <p><b>Calcula la solución al siguiente planteamiento</b></p>
+                <p>Si el perímetro del triángulo rectángulo es 24 u, entonces la suma de sus catetos en unidades es
+                    igual a: </p>
+                <img src="images/3j.png" alt="triangulo"><br>
+                <input type="radio" name="q38" value="a">21<br>
+                <input type="radio" name="q38" value="b">2<br>
+                <input type="radio" name="q38" value="c">14<br>
+                <input type="radio" name="q38" value="d">2016<br>
+            </div>
+            <div class="pregunta">
+                <p><b>Calcula la solución al siguiente planteamiento.</b></p>
+                <p>¿Cuántos números de tres cifras distintas se pueden formar utilizando los dígitos 4,6,7,8,9, si no se
+                    permite repetir ningún dígito?</p>
+                <input type="radio" name="q39" value="a">59<br>
+                <input type="radio" name="q39" value="b">60<br>
+                <input type="radio" name="q39" value="c">65<br>
+                <input type="radio" name="q39" value="d">50<br>
+            </div>
+            <div class="pregunta">
+                <p><b>Calcula la solución al siguiente planteamiento.</b></p>
+                <p>¿Cuántos números de tres cifras distintas se pueden formar utilizando los dígitos 0,2,4,6,7,8,9, si
+                    no se
+                    permite repetir ningún dígito?</p>
+                <input type="radio" name="q40" value="a">210<br>
+                <input type="radio" name="q40" value="b">195<br>
+                <input type="radio" name="q40" value="c">190<br>
+                <input type="radio" name="q40" value="d">200<br>
+            </div>
+            <button id="prevButton" disabled>Anterior</button>
+            <button id="nextButton">Siguiente</button>
+            <h3 id="resultado"></h3>
+            <h3 id="puntaje"></h3>
+            <div id="detalleResultados"></div>
+        </div>
+    </div>
+    <footer>García Moreno y Véloz esquina, Riobamba, Ecuador</footer>
+</body>
+
+</html>
